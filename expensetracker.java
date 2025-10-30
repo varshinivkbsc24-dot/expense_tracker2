@@ -114,7 +114,7 @@ public class expensetracker extends JFrame {
     private void updateTotal() {
         double total = 0;
         for (Expense e : expenseList) {
-            total += e.amount;
+            total -= e.amount;
         }
         lblTotal.setText("Total: ₹" + total);
     }
