@@ -185,5 +185,196 @@ public class ExpenseTracker extends JFrame {
         lblTotal.setForeground(Color.WHITE);
         bottomPanel.add(lblTotal);
         backgroundPanel.add(bottomPanel, BorderLayout.SOUTH);
-        // ===== MEMBER 2 END =====
+        // ===== MEMBER 2 END =====//
+                // ===== MEMBER 3 START =====
+        // ---------- Button Actions ----------
+        btnAdd.addActionListener(e -> addExpense());
+        btnDelete.addActionListener(e -> deleteSelected());
+        btnEdit.addActionListener(e -> editSelected());
+        btnExport.addActionListener(e -> exportToCSV());
+        btnWeekly.addActionListener(e -> {
+            Map<String, Double> weekly = getWeeklyCategoryTotals();
+            PieChartPanel pie = new PieChartPanel();
+            pie.setData(weekly);
+            JDialog dlg = new JDialog(this, "Weekly Expenses by Category (last 7 days)", true);
+            dlg.getContentPane().add(pie);
+            dlg.pack();
+            dlg.setLocationRelativeTo(this);
+            dlg.setVisible(true);
+        });
+
+        loadExpensesFromFile();
+        addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosing(WindowEvent e) {
+                saveExpensesToFile();
+            }
+        });
+    }
+
+    private JLabel createLabel(String text) {
+        JLabel label = new JLabel(text);
+        label.setFont(new Font("Segoe UI Semibold", Font.BOLD, 15));
+        label.setForeground(Color.WHITE);
+        return label;
+    }
+
+    private void addExpense() {
+        String category = cbCategory.getSelectedItem().toString();
+        String dateStr = tfDate.getText().trim();
+        double amount;
+
+        try {
+            amount = Double.parseDouble(tfAmount.getText().trim());
+            if (amount <= 0) throw new NumberFormatException();
+        } catch (NumberFormatException e) {
+            JOptionPane.showMessageDialog(this, "Please enter a valid positive amount!", "Invalid Input", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        try {
+            LocalDate.parse(dateStr);
+        } catch (DateTimeParseException ex) {
+            JOptionPane.showMessageDialog(this, "Please enter date in YYYY-MM-DD format.", "Invalid Date", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        Expense exp = new Expense(category, amount, dateStr);
+        expenseList.add(exp);
+        tableModel.addRow(new Object[]{category, amount, dateStr});
+        tfAmount.setText("");
+        updateTotal();
+        saveExpensesToFile();
+    }
+
+    private void deleteSelected() {
+        int[] selected = expenseTable.getSelectedRows();
+        if (selected.length == 0) {
+            JOptionPane.showMessageDialog(this, "Select a row to delete.", "No Selection", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        int confirmed = JOptionPane.showConfirmDialog(this, "Delete selected items?", "Confirm Delete", JOptionPane.YES_NO_OPTION);
+        if (confirmed != JOptionPane.YES_OPTION) return;
+
+        java.util.Arrays.sort(selected);
+        for (int i = selected.length - 1; i >= 0; i--) {
+            int row = selected[i];
+            expenseList.remove(row);
+            tableModel.removeRow(row);
+        }
+        updateTotal();
+        saveExpensesToFile();
+    }
+
+    private void editSelected() {
+        int selected = expenseTable.getSelectedRow();
+        if (selected == -1) {
+            JOptionPane.showMessageDialog(this, "Select a row to edit.", "No Selection", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        if (expenseTable.getRowSorter() != null) {
+            selected = expenseTable.convertRowIndexToModel(selected);
+        }
+
+        Expense e = expenseList.get(selected);
+        JTextField amountField = new JTextField(String.valueOf(e.amount));
+        JTextField dateField = new JTextField(e.date);
+        JComboBox<String> catField = new JComboBox<>(new String[]{"Food", "Transport", "Bills", "Shopping", "Others"});
+        catField.setSelectedItem(e.category);
+
+        JPanel panel = new JPanel(new GridLayout(0,1));
+        panel.add(new JLabel("Category:")); panel.add(catField);
+        panel.add(new JLabel("Amount:")); panel.add(amountField);
+        panel.add(new JLabel("Date (YYYY-MM-DD):")); panel.add(dateField);
+
+        int result = JOptionPane.showConfirmDialog(this, panel, "Edit Expense", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+        if (result == JOptionPane.OK_OPTION) {
+            try {
+                double newAmt = Double.parseDouble(amountField.getText().trim());
+                String newDate = dateField.getText().trim();
+                LocalDate.parse(newDate);
+                String newCat = catField.getSelectedItem().toString();
+
+                e.amount = newAmt;
+                e.date = newDate;
+                e.category = newCat;
+                tableModel.setValueAt(newCat, selected, 0);
+                tableModel.setValueAt(newAmt, selected, 1);
+                tableModel.setValueAt(newDate, selected, 2);
+                updateTotal();
+                saveExpensesToFile();
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(this, "Invalid input.", "Error", JOptionPane.ERROR_MESSAGE);
+            }
+        }
+    }
+
+    private void exportToCSV() {
+        JFileChooser fc = new JFileChooser();
+        fc.setSelectedFile(new File("expenses_export.csv"));
+        int res = fc.showSaveDialog(this);
+        if (res != JFileChooser.APPROVE_OPTION) return;
+        File chosen = fc.getSelectedFile();
+        try (PrintWriter pw = new PrintWriter(new FileWriter(chosen))) {
+            pw.println("category,amount,date");
+            for (Expense e : expenseList) {
+                pw.printf("%s,%.2f,%s%n", e.category.replace(",", " "), e.amount, e.date);
+            }
+            JOptionPane.showMessageDialog(this, "Exported successfully!", "Export Success", JOptionPane.INFORMATION_MESSAGE);
+        } catch (IOException ex) {
+            JOptionPane.showMessageDialog(this, "Export failed: " + ex.getMessage(), "Export Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void saveExpensesToFile() {
+        try (PrintWriter pw = new PrintWriter(new FileWriter(DATA_FILE))) {
+            pw.println("category,amount,date");
+            for (Expense e : expenseList) {
+                pw.printf("%s,%.2f,%s%n", e.category.replace(",", " "), e.amount, e.date);
+            }
+        } catch (IOException ex) {
+            System.err.println("Error saving: " + ex.getMessage());
+        }
+    }
+
+    private void loadExpensesFromFile() {
+        File f = new File(DATA_FILE);
+        if (!f.exists()) return;
+        expenseList.clear();
+        tableModel.setRowCount(0);
+        try (BufferedReader br = new BufferedReader(new FileReader(f))) {
+            String line = br.readLine();
+            while ((line = br.readLine()) != null) {
+                String[] parts = line.split(",", 3);
+                if (parts.length < 3) continue;
+                Expense e = new Expense(parts[0], Double.parseDouble(parts[1]), parts[2]);
+                expenseList.add(e);
+                tableModel.addRow(new Object[]{parts[0], Double.parseDouble(parts[1]), parts[2]});
+            }
+            updateTotal();
+        } catch (Exception ex) {
+            System.err.println("Error loading: " + ex.getMessage());
+        }
+    }
+
+    private Map<String, Double> getWeeklyCategoryTotals() {
+        Map<String, Double> totals = new LinkedHashMap<>();
+        LocalDate today = LocalDate.now();
+        LocalDate weekStart = today.minusDays(6);
+        for (int i = 0; i < cbCategory.getItemCount(); i++) {
+            totals.put(cbCategory.getItemAt(i), 0.0);
+        }
+        for (Expense e : expenseList) {
+            try {
+                LocalDate d = LocalDate.parse(e.date);
+                if (!d.isBefore(weekStart) && !d.isAfter(today)) {
+                    totals.put(e.category, totals.get(e.category) + e.amount);
+                }
+            } catch (DateTimeParseException ignored) {}
+        }
+        totals.entrySet().removeIf(en -> en.getValue() == 0.0);
+        return totals;
+    }
+    // Member 3 ends //
+    
 
