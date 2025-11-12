@@ -128,3 +128,62 @@ public class ExpenseTracker extends JFrame {
 
         backgroundPanel.add(inputPanel, BorderLayout.WEST);
         // ===== MEMBER 1 END =====
+/ ===== MEMBER 2 START =====
+        // ---------- Table Panel ----------
+        tableModel = new DefaultTableModel(new Object[]{"Category", "Amount (₹)", "Date"}, 0) {
+            @Override
+            public Class<?> getColumnClass(int columnIndex) {
+                if (columnIndex == 1) return Double.class;
+                return String.class;
+            }
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return false;
+            }
+        };
+        expenseTable = new JTable(tableModel);
+        expenseTable.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        expenseTable.setRowHeight(30);
+        expenseTable.setBackground(new Color(28, 28, 28));
+        expenseTable.setForeground(Color.WHITE);
+        expenseTable.setGridColor(new Color(60, 60, 60));
+        expenseTable.setAutoCreateRowSorter(true);
+
+        expenseTable.getTableHeader().setFont(new Font("Segoe UI Semibold", Font.BOLD, 15));
+        expenseTable.getTableHeader().setBackground(new Color(255, 51, 102));
+        expenseTable.getTableHeader().setForeground(Color.WHITE);
+
+        DefaultTableCellRenderer centerRenderer = new DefaultTableCellRenderer();
+        centerRenderer.setHorizontalAlignment(JLabel.CENTER);
+        for (int i = 0; i < expenseTable.getColumnCount(); i++) {
+            expenseTable.getColumnModel().getColumn(i).setCellRenderer(centerRenderer);
+        }
+
+        DefaultTableCellRenderer currencyRenderer = new DefaultTableCellRenderer() {
+            private NumberFormat nf = NumberFormat.getCurrencyInstance(new Locale("en", "IN"));
+            @Override
+            public void setValue(Object value) {
+                if (value instanceof Number) {
+                    setText(nf.format(((Number) value).doubleValue()));
+                } else {
+                    super.setValue(value);
+                }
+            }
+        };
+        currencyRenderer.setHorizontalAlignment(JLabel.CENTER);
+        expenseTable.getColumnModel().getColumn(1).setCellRenderer(currencyRenderer);
+
+        JScrollPane scrollPane = new JScrollPane(expenseTable);
+        scrollPane.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
+        scrollPane.getViewport().setBackground(new Color(24, 24, 24));
+        backgroundPanel.add(scrollPane, BorderLayout.CENTER);
+
+        JPanel bottomPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        bottomPanel.setOpaque(false);
+        lblTotal = new JLabel("Total: ₹0.00");
+        lblTotal.setFont(new Font("Segoe UI Semibold", Font.BOLD, 20));
+        lblTotal.setForeground(Color.WHITE);
+        bottomPanel.add(lblTotal);
+        backgroundPanel.add(bottomPanel, BorderLayout.SOUTH);
+        // ===== MEMBER 2 END =====
+
