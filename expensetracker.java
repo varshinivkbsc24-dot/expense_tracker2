@@ -128,7 +128,7 @@ public class ExpenseTracker extends JFrame {
 
         backgroundPanel.add(inputPanel, BorderLayout.WEST);
         // ===== MEMBER 1 END =====
-/ ===== MEMBER 2 START =====
+// ===== MEMBER 2 START =====
         // ---------- Table Panel ----------
         tableModel = new DefaultTableModel(new Object[]{"Category", "Amount (₹)", "Date"}, 0) {
             @Override
