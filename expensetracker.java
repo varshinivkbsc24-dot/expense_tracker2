@@ -376,5 +376,184 @@ public class ExpenseTracker extends JFrame {
         return totals;
     }
     // Member 3 ends //
-    
+     // ===== MEMBER 4 START =====
+    private void updateTotal() {
+        double total = 0;
+        for (Expense e : expenseList) {
+            total += e.amount;
+        }
+        lblTotal.setText("Total: ₹" + String.format("%.2f", total));
+    }
+
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(() -> new ExpenseTracker().setVisible(true));
+    }
+}
+
+/* ---------- Pie Chart Panel ---------- */
+class PieChartPanel extends JPanel {
+    private java.util.Map<String, Double> data = new java.util.LinkedHashMap<>();
+    private java.util.List<Color> palette;
+
+    public PieChartPanel() {
+        setPreferredSize(new Dimension(420, 320));
+        setBackground(new Color(34,34,34));
+        palette = java.util.Arrays.asList(
+            new Color(255,99,132),
+            new Color(54,162,235),
+            new Color(255,206,86),
+            new Color(75,192,192),
+            new Color(153,102,255),
+            new Color(255,159,64)
+        );
+    }
+
+    public void setData(java.util.Map<String, Double> map) {
+        data.clear();
+        for (var e : map.entrySet()) {
+            if (e.getValue() > 0) data.put(e.getKey(), e.getValue());
+        }
+        repaint();
+    }
+
+    @Override
+    protected void paintComponent(Graphics g) {
+        super.paintComponent(g);
+        if (data.isEmpty()) {
+            g.setColor(Color.LIGHT_GRAY);
+            g.setFont(new Font("Segoe UI", Font.PLAIN, 16));
+            drawCenteredString(g, "No expenses in the last 7 days", getWidth(), getHeight());
+            return;
+        }
+
+        Graphics2D g2 = (Graphics2D) g;
+        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+        int w = getWidth(), h = getHeight();
+        int pieSize = Math.min(w, h) * 55 / 100;
+        int pieX = 20, pieY = 20;
+
+        double total = data.values().stream().mapToDouble(Double::doubleValue).sum();
+        double curAngle = 0;
+        int idx = 0;
+
+        for (var e : data.entrySet()) {
+            double value = e.getValue();
+            double angle = value / total * 360.0;
+            Color c = palette.get(idx % palette.size());
+            g2.setColor(c);
+            g2.fillArc(pieX, pieY, pieSize, pieSize, (int) curAngle, (int) angle);
+            curAngle += angle;
+            idx++;
+        }
+
+          // draw legend on right
+        int legendX = pieX + pieSize + 20;
+        int legendY = pieY + 10;
+        int box = 14;
+        idx = 0;
+        g2.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        for (java.util.Map.Entry<String, Double> e : data.entrySet()) {
+            Color c = palette.get(idx % palette.size());
+            g2.setColor(c);
+            g2.fillRect(legendX, legendY + idx * 28, box, box);
+            g2.setColor(Color.WHITE);
+            String label = String.format("%s — ₹%.2f", e.getKey(), e.getValue());
+            g2.drawString(label, legendX + box + 8, legendY + idx * 28 + box - 2);
+            idx++;
+        }
+
+        // draw donut center total
+        g2.setColor(new Color(34,34,34));
+        int inner = pieSize * 48 / 100;
+        int innerX = pieX + (pieSize - inner) / 2;
+        int innerY = pieY + (pieSize - inner) / 2;
+        g2.fillOval(innerX, innerY, inner, inner);
+
+        g2.setColor(Color.WHITE);
+        g2.setFont(new Font("Segoe UI Semibold", Font.BOLD, 14));
+        drawCenteredString(g2, "Total\n₹" + String.format("%.2f", total), inner, inner, innerX, innerY);
+    }
+
+    private void drawCenteredString(Graphics g, String text, int width, int height) {
+        drawCenteredString(g, text, width, height, 0, 0);
+    }
+
+    private void drawCenteredString(Graphics g, String text, int width, int height, int offsetX, int offsetY) {
+        Graphics2D g2 = (Graphics2D) g;
+        String[] lines = text.split("\n");
+        FontMetrics fm = g2.getFontMetrics();
+        int lineHeight = fm.getHeight();
+        int totalH = lines.length * lineHeight;
+        int y = offsetY + (height - totalH) / 2 + fm.getAscent();
+        g2.setColor(Color.WHITE);
+        for (String line : lines) {
+            int strW = fm.stringWidth(line);
+            int x = offsetX + (width - strW) / 2;
+            g2.drawString(line, x, y);
+            y += lineHeight;
+        }
+    }
+}
+// === END ADDED BY CHATGPT ===
+
+/* ---------- Animated Button Class (unchanged) ---------- */
+class AnimatedButton extends JButton {
+    private Color color1, color2;
+    private boolean hovered = false;
+
+    public AnimatedButton(String text, Color color1, Color color2) {
+        super(text);
+        this.color1 = color1;
+        this.color2 = color2;
+        setFocusPainted(false);
+        setForeground(Color.WHITE);
+        setFont(new Font("Segoe UI Semibold", Font.BOLD, 14));
+        setCursor(new Cursor(Cursor.HAND_CURSOR));
+        setContentAreaFilled(false);
+        setBorder(new EmptyBorder(10, 20, 10, 20));
+
+        addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseEntered(MouseEvent e) {
+                hovered = true;
+                repaint();
+            }
+
+            @Override
+            public void mouseExited(MouseEvent e) {
+                hovered = false;
+                repaint();
+            }
+        });
+    }
+
+    @Override
+    protected void paintComponent(Graphics g) {
+        Graphics2D g2 = (Graphics2D) g.create();
+        GradientPaint gradient = new GradientPaint(0, 0, color1, getWidth(), getHeight(), color2);
+        g2.setPaint(gradient);
+        g2.fillRoundRect(0, 0, getWidth(), getHeight(), 20, 20);
+
+        if (hovered) {
+            g2.setColor(new Color(255, 255, 255, 60));
+            g2.fillRoundRect(0, 0, getWidth(), getHeight(), 20, 20);
+            g2.setColor(new Color(255, 255, 255, 90));
+            g2.setStroke(new BasicStroke(2));
+            g2.drawRoundRect(2, 2, getWidth() - 4, getHeight() - 4, 20, 20);
+        }
+
+        // Shadow Effect
+        g2.setColor(new Color(0, 0, 0, hovered ? 120 : 70));
+        g2.fillRoundRect(3, 3, getWidth(), getHeight(), 20, 20);
+
+        g2.setFont(getFont());
+        FontMetrics fm = g2.getFontMetrics();
+        int x = (getWidth() - fm.stringWidth(getText())) / 2;
+        int y = (getHeight() + fm.getAscent()) / 2 - 4;
+        g2.setColor(getForeground());
+        g2.drawString(getText(), x, y);
+        g2.dispose();
+    }
+}
 
